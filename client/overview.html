@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>e-Haazri Dashboard</title>
+    <script src="/_sdk/data_sdk.js"></script>
+    <script src="/_sdk/element_sdk.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+    <style>
+      body {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+        min-height: 100%;
+        background-color: #f7fafc;
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      }
+
+      html,
+      body {
+        height: 100%;
+        overflow-x: hidden;
+      }
+
+      #wrapper {
+        min-height: 100%;
+      }
+
+      .sidebar {
+        background-color: #ffffff;
+        font-size: 20px;
+        width: 280px;
+        min-height: 100vh;
+        position: fixed;
+        top: 0;
+        left: 0;
+        z-index: 1000;
+        transition: transform 0.3s ease;
+        box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+        overflow-y: auto;
+      }
+
+      .txt {
+        color: #6b7280;
+        font-size: 18px;
+      }
+
+      .sidebar .nav-link {
+        padding: 12px 16px;
+        border-radius: 8px;
+        transition: all 0.3s ease;
+        color: #374151;
+      }
+
+      .sidebar .nav-link:hover {
+        background-color: #f3f4f6;
+        color: #0b3d91;
+      }
+
+      .main-content {
+        margin-left: 280px;
+        width: calc(100% - 280px);
+        padding: 20px;
+        transition: margin-left 0.3s ease, width 0.3s ease;
+      }
+
+      .stat-card {
+        transition: transform 0.2s, box-shadow 0.2s;
+        border: none;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        height: 100%;
+        cursor: default;
+      }
+
+      .stat-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      }
+
+      .stat-card.clickable {
+        cursor: pointer;
+      }
+
+      .search-box {
+        position: relative;
+      }
+
+      .search-box i {
+        position: absolute;
+        left: 15px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #6b7280;
+      }
+
+      .search-box input {
+        padding-left: 45px;
+        border-radius: 8px;
+        border: 1px solid #e5e7eb;
+      }
+
+      .mobile-toggle {
+        display: none;
+        position: fixed;
+        top: 15px;
+        left: 15px;
+        z-index: 1001;
+        background-color: #ffffff;
+        border: none;
+        padding: 10px 15px;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        cursor: pointer;
+      }
+
+      .mobile-toggle i {
+        font-size: 24px;
+        color: #0b3d91;
+      }
+
+      .overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        z-index: 999;
+      }
+
+      .overlay.active {
+        display: block;
+      }
+
+      .loading-spinner {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        border: 3px solid rgba(11, 61, 145, 0.3);
+        border-radius: 50%;
+        border-top-color: #0b3d91;
+        animation: spin 0.8s linear infinite;
+      }
+
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      .toast-container {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 9999;
+      }
+
+      /* Tablet */
+      @media (max-width: 992px) {
+        .sidebar {
+          width: 250px;
+        }
+        .main-content {
+          margin-left: 250px;
+          width: calc(100% - 250px);
+          padding: 18px;
+        }
+      }
+
+      /* Mobile */
+      @media (max-width: 768px) {
+        .mobile-toggle {
+          display: block;
+        }
+        .sidebar {
+          transform: translateX(-100%);
+          width: 280px;
+        }
+        .sidebar.active {
+          transform: translateX(0);
+        }
+        .main-content {
+          margin-left: 0;
+          width: 100%;
+          padding: 15px;
+          padding-top: 70px;
+        }
+      }
+
+      @media (max-width: 576px) {
+        .sidebar {
+          width: 260px;
+        }
+        .main-content {
+          padding: 12px;
+          padding-top: 65px;
+        }
+      }
+    </style>
+
+    <style>
+      @view-transition {
+        navigation: auto;
+      }
+    </style>
+    <script src="https://cdn.tailwindcss.com" type="text/javascript"></script>
+  </head>
+
+  <body>
+    <script>
+      const userType = localStorage.getItem("userType"); // web storage standard API [web:119][web:105]
+
+      // Login pannalai na, login page-ku anupu
+      if (!userType) {
+        window.location.href = "login.html"; // js redirect pattern [web:91][web:125]
+      }
+
+      // Student / faculty na overview open panna koodadhu → attendance-ku thiruppu
+      if (userType === "student" || userType === "faculty") {
+        window.location.href = "attendance.html";
+      }
+    </script>
+    <!-- Mobile Menu Toggle -->
+    <button class="mobile-toggle" id="mobileToggle" aria-label="Toggle menu">
+      <i class="bi bi-list"></i>
+    </button>
+
+    <!-- Overlay for mobile -->
+    <div class="overlay" id="overlay"></div>
+
+    <!-- Sidebar -->
+    <nav
+      class="text-black p-4 sidebar card"
+      id="sidebar"
+      role="navigation"
+      aria-label="Main navigation"
+    >
+      <h1 class="p-1" style="margin-left: 10px">e-Haazri</h1>
+      <p class="txt" style="margin-left: 10px">College Dashboard</p>
+      <hr />
+
+      <ul class="nav flex-column">
+        <li class="nav-item">
+          <a class="nav-link text-black" href="overview.html">
+            <i class="bi bi-house-door-fill me-2"></i>Overview
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link text-black" href="student.html">
+            <i class="bi bi-people-fill me-2"></i>Students
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link text-black" href="faculty.html">
+            <i class="bi bi-person-badge-fill me-2"></i>Faculty
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link text-black" href="attendance.html">
+            <i class="bi bi-calendar-check-fill me-2"></i>Attendance
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link text-black" href="login.html" id="logoutLink">
+            <i class="bi bi-box-arrow-right me-2"></i>Logout
+          </a>
+        </li>
+      </ul>
+    </nav>
+
+    <div id="wrapper" style="margin-left: 20px">
+      <!-- Main Content -->
+      <main class="main-content">
+        <div class="container-fluid">
+          <!-- Header -->
+          <header class="row mb-4 align-items-center">
+            <div class="col-lg-9 col-md-8 mb-3 mb-lg-0">
+              <h2
+                class="mb-2"
+                style="color: #000000; font-weight: 500; font-size: 30px"
+              >
+                Jeppiaar Institute of Technology Dashboard
+              </h2>
+              <div
+                class="d-flex align-items-center text-muted"
+                style="font-size: 18px"
+              >
+                <span class="me-3">
+                  Welcome, <strong id="userName">Admin</strong>
+                </span>
+                <span class="text-secondary">|</span>
+                <span id="currentDate" class="ms-2"></span>
+              </div>
+            </div>
+            <div class="col-lg-3 col-md-4">
+              <div class="search-box">
+                <i class="bi bi-search"></i>
+                <label for="searchInput" class="visually-hidden">Search</label>
+                <input
+                  type="text"
+                  class="form-control shadow-sm"
+                  placeholder="Search..."
+                  id="searchInput"
+                />
+              </div>
+            </div>
+          </header>
+
+          <!-- Stats Cards Row -->
+          <br />
+          <div class="row g-3 mb-4">
+            <div class="col-lg-3 col-md-6 col-sm-6">
+              <div
+                class="card stat-card text-center p-3 d-flex flex-row align-items-center"
+              >
+                <div class="col-8" style="font-size: 20px">
+                  <p class="mb-1">Total Students</p>
+                  <p class="fw-bold mb-0" id="studentCount">
+                    <span class="loading-spinner"></span>
+                  </p>
+                </div>
+                <div class="col-4" style="color: #0b3d91">
+                  <i class="bi bi-people display-5"></i>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-lg-3 col-md-6 col-sm-6">
+              <div
+                class="card stat-card text-center p-3 d-flex flex-row align-items-center"
+              >
+                <div class="col-8" style="font-size: 20px">
+                  <p class="mb-1">Teaching Staff</p>
+                  <p class="fw-bold mb-0" id="staffCount">
+                    <span class="loading-spinner"></span>
+                  </p>
+                </div>
+                <div class="col-4" style="color: #0b3d91">
+                  <i class="bi bi-person-badge display-5"></i>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-lg-3 col-md-6 col-sm-6">
+              <div
+                class="card stat-card text-center p-3 d-flex flex-row align-items-center"
+              >
+                <div class="col-8" style="font-size: 20px">
+                  <p class="mb-1">Today's Attendance</p>
+                  <p class="fw-bold mb-0" id="attendancePercent">
+                    <span class="loading-spinner"></span>
+                  </p>
+                </div>
+                <div class="col-4" style="color: #0b3d91">
+                  <i class="bi bi-clipboard-check display-5"></i>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-lg-3 col-md-6 col-sm-6">
+              <div
+                class="card stat-card clickable text-center p-3 d-flex flex-row align-items-center"
+                id="supportCard"
+              >
+                <div class="col-8" style="font-size: 20px">
+                  <p class="mb-1">Support</p>
+                </div>
+                <div class="col-4" style="color: #0b3d91">
+                  <i class="bi bi-headset display-5"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Attendance Overview -->
+          <br /><br />
+          <section class="card shadow-sm p-4" style="margin-left: 10px">
+            <div
+              class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3 gap-3"
+            >
+              <h3 class="mb-0 h4">Attendance Overview</h3>
+              <div class="d-flex gap-2 flex-wrap">
+                <button
+                  class="btn btn-light border rounded px-4 py-2 shadow-sm fw-semibold"
+                >
+                  <i class="bi bi-calendar-check p-1"></i>This Week
+                </button>
+                <button
+                  class="btn text-white d-flex align-items-center"
+                  style="background-color: #0b3d91"
+                  id="exportBtn"
+                >
+                  <i class="bi bi-download me-2"></i> Export
+                </button>
+              </div>
+            </div> 
+            <script>
+              document
+                .getElementById("exportBtn")
+                ?.addEventListener("click", () => {
+                  // Same origin na direct open; illa na full URL
+                  window.location.href =
+                    "http://localhost:5000/api/attendance/export-pdf";
+                });
+            </script>
+
+            <!-- Chart canvas -->
+            <div class="border rounded p-3" style="min-height: 260px">
+              <canvas id="attendanceChart" style="max-height: 320px"></canvas>
+            </div>
+          </section>
+        </div>
+      </main>
+    </div>
+
+    <!-- Support Modal -->
+    <div
+      class="modal fade"
+      id="supportModal"
+      tabindex="-1"
+      aria-labelledby="supportModalLabel"
+      aria-hidden="true"
+    >
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title fw-bold" id="supportModalLabel">
+              Support Information
+            </h5>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+              aria-label="Close"
+            ></button>
+          </div>
+          <div class="modal-body">
+            <h6 class="fw-bold mb-3">
+              JEPPIAAR INSTITUTE OF TECHNOLOGY (AUTONOMOUS)
+            </h6>
+            <p>
+              <i class="bi bi-geo-alt-fill me-2 text-primary"></i>
+              Kunnam, TK, Sunguvarchatram, Sriperumbudur
+            </p>
+            <p>
+              <i class="bi bi-telephone-fill me-2 text-primary"></i>
+              044-27159000
+            </p>
+            <p>
+              <i class="bi bi-envelope-fill me-2 text-primary"></i>
+              office@jeppiaarinstitute.org
+            </p>
+            <p>
+              <i class="bi bi-globe me-2 text-primary"></i>
+              Website:
+              <a
+                href="https://www.jeppiaarinstitute.org/"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                https://www.jeppiaarinstitute.org/
+              </a>
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Logout Confirmation Modal -->
+    <div
+      class="modal fade"
+      id="logoutModal"
+      tabindex="-1"
+      aria-labelledby="logoutModalLabel"
+      aria-hidden="true"
+    >
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="logoutModalLabel">Confirm Logout</h5>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+              aria-label="Close"
+            ></button>
+          </div>
+          <div class="modal-body">Are you sure you want to logout?</div>
+          <div class="modal-footer">
+            <button
+              type="button"
+              class="btn btn-secondary"
+              data-bs-dismiss="modal"
+            >
+              Cancel
+            </button>
+            <button type="button" class="btn btn-primary" id="confirmLogout">
+              Logout
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MAIN SCRIPT -->
+    <script>
+      // ===================== BACKEND COUNTS =====================
+      async function loadOverviewCounts() {
+        try {
+          const [sRes, fRes, aRes] = await Promise.all([
+            fetch("http://localhost:5000/api/students/count"),
+            fetch("http://localhost:5000/api/faculty/count"),
+            fetch("http://localhost:5000/api/attendance/today-count"),
+          ]);
+
+          const s = await sRes.json();
+          const f = await fRes.json();
+          const a = await aRes.json();
+
+          animateCount("studentCount", s.count || 0, false);
+          animateCount("staffCount", f.count || 0, false);
+          animateCount("attendancePercent", a.count || 0, true);
+        } catch (err) {
+          console.error("Error loading overview counts", err);
+        }
+      }
+
+      // ===================== COUNT ANIMATION =====================
+      function animateCount(elementId, target, isPercentage) {
+        const element = document.getElementById(elementId);
+        if (!element) return;
+
+        element.innerHTML = "";
+        let current = 0;
+        const steps = 30;
+        const increment = target / steps;
+
+        const timer = setInterval(function () {
+          current += increment;
+          if (current >= target) {
+            element.textContent = isPercentage ? target + "%" : target;
+            clearInterval(timer);
+          } else {
+            const value = Math.floor(current);
+            element.textContent = isPercentage ? value + "%" : value;
+          }
+        }, 30);
+      }
+
+      // ===================== DATE DISPLAY =====================
+      function updateDate() {
+        const now = new Date();
+        const options = {
+          weekday: "long",
+          day: "numeric",
+          month: "long",
+          year: "numeric",
+        };
+        const formattedDate = now.toLocaleDateString("en-GB", options);
+        const dateElement = document.getElementById("currentDate");
+        if (dateElement) {
+          dateElement.textContent = formattedDate;
+        }
+      }
+      updateDate();
+      setInterval(updateDate, 1000 * 60 * 60);
+
+      // ===================== TOAST =====================
+      function showToast(message) {
+        let toastContainer = document.getElementById("toastContainer");
+        if (!toastContainer) {
+          toastContainer = document.createElement("div");
+          toastContainer.id = "toastContainer";
+          toastContainer.className = "toast-container";
+          document.body.appendChild(toastContainer);
+        }
+
+        const toast = document.createElement("div");
+        toast.className = "alert alert-info alert-dismissible fade show";
+        toast.setAttribute("role", "alert");
+        toast.innerHTML =
+          message +
+          '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>';
+        toastContainer.appendChild(toast);
+
+        setTimeout(function () {
+          toast.remove();
+        }, 3000);
+      }
+
+      // ===================== SUPPORT MODAL =====================
+      document
+        .getElementById("supportCard")
+        .addEventListener("click", function () {
+          const supportModal = new bootstrap.Modal(
+            document.getElementById("supportModal")
+          );
+          supportModal.show();
+        });
+
+      // ===================== LOGOUT =====================
+      document
+        .getElementById("logoutLink")
+        .addEventListener("click", function (e) {
+          e.preventDefault();
+          const logoutModal = new bootstrap.Modal(
+            document.getElementById("logoutModal")
+          );
+          logoutModal.show();
+        });
+
+      document
+        .getElementById("confirmLogout")
+        .addEventListener("click", function () {
+          showToast("Logging out...");
+          setTimeout(function () {
+            window.location.href = "login.html";
+          }, 1500);
+        });
+
+      // ===================== EXPORT BTN =====================
+      document
+        .getElementById("exportBtn")
+        .addEventListener("click", function () {
+          showToast("Exporting attendance data...");
+        });
+
+      // ===================== SEARCH =====================
+      document
+        .getElementById("searchInput")
+        .addEventListener("input", function (e) {
+          const searchTerm = e.target.value.toLowerCase();
+          if (searchTerm.length > 2) {
+            showToast("Searching for: " + searchTerm);
+          }
+        });
+
+      // ===================== MOBILE MENU =====================
+      const mobileToggle = document.getElementById("mobileToggle");
+      const sidebar = document.getElementById("sidebar");
+      const overlay = document.getElementById("overlay");
+
+      mobileToggle.addEventListener("click", function () {
+        sidebar.classList.toggle("active");
+        overlay.classList.toggle("active");
+      });
+
+      overlay.addEventListener("click", function () {
+        sidebar.classList.remove("active");
+        overlay.classList.remove("active");
+      });
+
+      // ===================== INIT =====================
+      window.addEventListener("load", function () {
+        loadOverviewCounts();
+        loadAttendanceChart(); // chart draw
+      });
+      // ===================== ATTENDANCE CHART =====================
+      let attendanceChart = null;
+
+      async function loadAttendanceChart() {
+        const el = document.getElementById("attendanceChart");
+        if (!el) return;
+        const ctx = el.getContext("2d");
+
+        try {
+          const res = await fetch(
+            "http://localhost:5000/api/attendance/weekly-stats"
+          );
+          const data = await res.json();
+
+          const labels = data.labels || [];
+          const studentData = data.studentCounts || [];
+          const facultyData = data.facultyCounts || [];
+
+          if (attendanceChart) attendanceChart.destroy();
+
+          attendanceChart = new Chart(ctx, {
+            type: "line",
+            data: {
+              labels,
+              datasets: [
+                {
+                  label: "Student Attendance",
+                  data: studentData,
+                  borderColor: "#0b3d91",
+                  backgroundColor: "rgba(11, 61, 145, 0.1)",
+                  borderWidth: 2,
+                  tension: 0.3,
+                  fill: true,
+                  pointRadius: 3,
+                },
+                {
+                  label: "Faculty Attendance",
+                  data: facultyData,
+                  borderColor: "#16a34a",
+                  backgroundColor: "rgba(22, 163, 74, 0.1)",
+                  borderWidth: 2,
+                  tension: 0.3,
+                  fill: true,
+                  pointRadius: 3,
+                },
+              ],
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                legend: { position: "bottom" },
+              },
+              scales: {
+                y: {
+                  beginAtZero: true,
+                  ticks: { stepSize: 1 },
+                },
+              },
+            },
+          });
+        } catch (e) {
+          console.error("chart load error", e);
+        }
+      }
+
+      // OPTIONAL: Element SDK (keep as in original)
+      if (window.elementSdk) {
+        window.elementSdk.init({
+          defaultConfig: {},
+          onConfigChange: async (config) => {},
+          mapToCapabilities: (config) => ({
+            recolorables: [],
+            borderables: [],
+            fontEditable: undefined,
+            fontSizeable: undefined,
+          }),
+          mapToEditPanelValues: (config) => new Map(),
+        });
+      }
+    </script>
+    <script>
+      async function autoCheckout() {
+        const userMobile = localStorage.getItem("userMobile");
+        const userType = localStorage.getItem("userType");
+        if (!userMobile || !userType) return;
+
+        const body = {
+          facultyMobile: userType === "faculty" ? userMobile : null,
+          studentMobile: userType === "student" ? userMobile : null,
+        };
+
+        try {
+          const res = await fetch(
+            "http://localhost:5000/api/attendance/checkout",
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(body),
+            }
+          );
+          const data = await res.json();
+          console.log("auto checkout:", data.message || res.status);
+        } catch (e) {
+          console.log("auto checkout error:", e.message);
+        }
+      }
+
+      // Existing logout confirm handler replace pannunga
+      document
+        .getElementById("confirmLogout")
+        .addEventListener("click", async () => {
+          await autoCheckout(); // 3–4 pm la success aagum
+          localStorage.clear();
+          window.location.href = "login.html";
+        });
+
+      // baaki overview script code same‑aa irukkattum
+    </script>
+  </body>
+</html>
