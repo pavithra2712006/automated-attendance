@@ -25,8 +25,7 @@ e-Haazri is a **GPS-based automated attendance system** for Jeppiaar Institute. 
 
 ```bash
 git clone <repo>
-cd e-haazri
-npm install
+cd server
 npm start
 ```
 
